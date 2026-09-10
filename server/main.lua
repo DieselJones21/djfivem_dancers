@@ -20,6 +20,38 @@ local function failReason(code)
     return locale('not_allowed')
 end
 
+local function nearClub(src, clubId, dist)
+    local club = DJF.GetClub(clubId)
+    if not club then return false end
+    dist = dist or Config.ManageDistance
+    local ped = GetPlayerPed(src)
+    if not ped or ped == 0 then return false end
+    local playerCoords = GetEntityCoords(ped)
+    for i = 1, #club.poles do
+        if #(playerCoords - club.poles[i].coords) <= dist then
+            return true
+        end
+    end
+    if club.wash and #(playerCoords - club.wash.coords) <= dist then
+        return true
+    end
+    return false
+end
+
+local function makeDancerInfo(src, dancerIndex, routineIndex)
+    local dancer = Config.Dancers[dancerIndex]
+    if not dancer then return nil end
+    return {
+        model = dancer.model,
+        dancerLabel = dancer.label,
+        dancerIndex = dancerIndex,
+        routine = routineIndex,
+        phase = math.random(),
+        rate = 0.92 + math.random() * 0.16,
+        placedBy = Bridge.GetCharName(src),
+    }
+end
+
 local function nearClubPoint(src, coords, dist)
     local ped = GetPlayerPed(src)
     if not ped or ped == 0 then return false end
@@ -49,20 +81,15 @@ RegisterNetEvent('djfivem_dancers:server:place', function(clubId, poleId, dancer
         TriggerClientEvent('ox_lib:notify', src, { title = club.label, description = failReason(reason), type = 'error' })
         return
     end
-    if not nearClubPoint(src, pole.coords, 6.0) then
+    if not nearClub(src, clubId, Config.ManageDistance) then
         TriggerClientEvent('ox_lib:notify', src, { title = club.label, description = locale('too_far'), type = 'error' })
         return
     end
     local dancer = Config.Dancers[dancerIndex]
     if not dancer then return end
-    local routines = Config.Routines[pole.style or 'pole'] or Config.Routines.pole
+    local routines = DJF.GetRoutines(pole.style or 'pole')
     if not routines[routineIndex] then routineIndex = 1 end
-    local info = {
-        model = dancer.model,
-        dancerLabel = dancer.label,
-        routine = routineIndex,
-        placedBy = Bridge.GetCharName(src),
-    }
+    local info = makeDancerInfo(src, dancerIndex, routineIndex)
     ensureClub(clubId)[poleId] = info
     TriggerClientEvent('djfivem_dancers:client:syncPole', -1, clubId, poleId, info)
     TriggerClientEvent('ox_lib:notify', src, {
@@ -89,9 +116,15 @@ RegisterNetEvent('djfivem_dancers:server:routine', function(clubId, poleId, rout
         TriggerClientEvent('ox_lib:notify', src, { title = club.label, description = locale('pole_empty'), type = 'error' })
         return
     end
-    local routines = Config.Routines[pole.style or 'pole'] or Config.Routines.pole
+    if not nearClub(src, clubId, Config.ManageDistance) then
+        TriggerClientEvent('ox_lib:notify', src, { title = club.label, description = locale('too_far'), type = 'error' })
+        return
+    end
+    local routines = DJF.GetRoutines(pole.style or 'pole')
     if not routines[routineIndex] then return end
     current.routine = routineIndex
+    current.phase = math.random()
+    current.rate = 0.92 + math.random() * 0.16
     TriggerClientEvent('djfivem_dancers:client:syncPole', -1, clubId, poleId, current)
     TriggerClientEvent('ox_lib:notify', src, { title = club.label, description = locale('routine_changed'), type = 'success' })
 end)
@@ -106,9 +139,98 @@ RegisterNetEvent('djfivem_dancers:server:remove', function(clubId, poleId)
         TriggerClientEvent('ox_lib:notify', src, { title = club.label, description = failReason(reason), type = 'error' })
         return
     end
+    if not nearClub(src, clubId, Config.ManageDistance) then
+        TriggerClientEvent('ox_lib:notify', src, { title = club.label, description = locale('too_far'), type = 'error' })
+        return
+    end
     ensureClub(clubId)[poleId] = nil
     TriggerClientEvent('djfivem_dancers:client:syncPole', -1, clubId, poleId, nil)
     TriggerClientEvent('ox_lib:notify', src, { title = club.label, description = locale('dancer_removed'), type = 'success' })
+end)
+
+RegisterNetEvent('djfivem_dancers:server:fill', function(clubId, poleIds)
+    local src = source
+    local club = DJF.GetClub(clubId)
+    if not club or type(poleIds) ~= 'table' then return end
+    local allowed, reason = Bridge.CanManage(src, clubId)
+    if not allowed then
+        TriggerClientEvent('ox_lib:notify', src, { title = club.label, description = failReason(reason), type = 'error' })
+        return
+    end
+    if not nearClub(src, clubId, Config.ManageDistance) then
+        TriggerClientEvent('ox_lib:notify', src, { title = club.label, description = locale('too_far'), type = 'error' })
+        return
+    end
+
+    local used = {}
+    for _, info in pairs(ensureClub(clubId)) do
+        if info.dancerIndex then used[info.dancerIndex] = true end
+        if info.model then used[info.model] = true end
+    end
+    local pool = {}
+    for i = 1, #Config.Dancers do
+        local dancer = Config.Dancers[i]
+        if not used[i] and not used[dancer.model] then
+            pool[#pool + 1] = i
+        end
+    end
+
+    local placed = 0
+    for i = 1, math.min(#poleIds, 16) do
+        local poleId = tonumber(poleIds[i])
+        local pole = DJF.GetPole(clubId, poleId)
+        if pole then
+            local dancerIndex = pool[1]
+            if dancerIndex then
+                table.remove(pool, 1)
+            else
+                dancerIndex = ((poleId - 1) % #Config.Dancers) + 1
+            end
+            local scene = DJF.SceneRoutineIndexes(pole.style or 'pole')
+            local routineIndex = scene[((placed) % #scene) + 1]
+            local info = makeDancerInfo(src, dancerIndex, routineIndex)
+            if info then
+                ensureClub(clubId)[poleId] = info
+                TriggerClientEvent('djfivem_dancers:client:syncPole', -1, clubId, poleId, info)
+                placed = placed + 1
+            end
+        end
+    end
+
+    TriggerClientEvent('ox_lib:notify', src, {
+        title = club.label,
+        description = locale('filled_poles', placed),
+        type = 'success',
+    })
+end)
+
+RegisterNetEvent('djfivem_dancers:server:clearPoles', function(clubId, poleIds)
+    local src = source
+    local club = DJF.GetClub(clubId)
+    if not club or type(poleIds) ~= 'table' then return end
+    local allowed, reason = Bridge.CanManage(src, clubId)
+    if not allowed then
+        TriggerClientEvent('ox_lib:notify', src, { title = club.label, description = failReason(reason), type = 'error' })
+        return
+    end
+    if not nearClub(src, clubId, Config.ManageDistance) then
+        TriggerClientEvent('ox_lib:notify', src, { title = club.label, description = locale('too_far'), type = 'error' })
+        return
+    end
+    local cleared = 0
+    for i = 1, math.min(#poleIds, 16) do
+        local poleId = tonumber(poleIds[i])
+        if DJF.GetPole(clubId, poleId) then
+            ensureClub(clubId)[poleId] = nil
+            TriggerClientEvent('djfivem_dancers:client:syncPole', -1, clubId, poleId, nil)
+            cleared = cleared + 1
+        end
+    end
+    TriggerClientEvent('ox_lib:notify', src, {
+        title = club.label,
+        description = locale('cleared_poles', cleared),
+        type = 'success',
+    })
 end)
 
 local function cooling(bucket, src, seconds)
@@ -261,6 +383,24 @@ lib.callback.register('djfivem_dancers:server:washOther', function(source, clubI
     return false, msg
 end)
 
+lib.addCommand('dancermenu', {
+    help = 'Open the Vanilla Unicorn stage board',
+}, function(source)
+    if source == 0 then return end
+    local can = false
+    for clubId, club in pairs(Config.Clubs) do
+        if DJF.ClubEnabled(club) and Bridge.CanManage(source, clubId) then
+            can = true
+            break
+        end
+    end
+    if not can then
+        TriggerClientEvent('ox_lib:notify', source, { title = locale('club_title'), description = locale('not_allowed'), type = 'error' })
+        return
+    end
+    TriggerClientEvent('djfivem_dancers:client:openMenu', source)
+end)
+
 lib.addCommand('cleardancers', {
     help = 'Clear all club dancers (admin)',
 }, function(source)
@@ -282,4 +422,33 @@ end)
 AddEventHandler('onResourceStart', function(resource)
     if resource ~= GetCurrentResourceName() then return end
     print('[djfivem_dancers] Stages, tips, and 17.5% wash ready. Banking: ' .. Config.Banking.resource)
+end)
+
+CreateThread(function()
+    while true do
+        local cfg = Config.AnimationCycle
+        if not cfg or not cfg.enabled then
+            Wait(5000)
+        else
+            Wait(math.random(cfg.minMs or 45000, cfg.maxMs or 90000))
+            for clubId, poles in pairs(DancerState) do
+                local club = DJF.GetClub(clubId)
+                if club then
+                    for poleId, info in pairs(poles) do
+                        local pole = DJF.GetPole(clubId, poleId)
+                        if pole and info then
+                            local current = DJF.GetRoutine(pole.style or 'pole', info.routine)
+                            if (current.attach or 'scene') == 'scene' then
+                                info.routine = DJF.NextRoutineIndex(pole.style or 'pole', info.routine)
+                                info.phase = math.random()
+                                info.rate = 0.92 + math.random() * 0.16
+                                TriggerClientEvent('djfivem_dancers:client:syncPole', -1, clubId, poleId, info)
+                                Wait(200)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
 end)

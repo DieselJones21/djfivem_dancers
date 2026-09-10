@@ -1,18 +1,18 @@
 # djfivem_dancers
 
-FiveM club resource for **Vanilla Unicorn** (and an optional nightclub) that lets on-duty club staff put high-quality female dancers on poles, lets guests throw cash at the stage, and lets people wash dirty money at the club for a **17.5% business cut** deposited through **Renewed Banking**.
+FiveM club resource for **Vanilla Unicorn** that lets on-duty `vanillaunicorn` staff put high-quality female dancers on nine poles, lets guests throw cash at the stage, and lets people wash dirty money at the club for a **17.5% business cut** deposited through **Renewed Banking**.
 
 ## Features
 
-- Job-locked **stage control**: place, swap, change routine, or remove dancers
+- Job-locked **ox_lib Stage Board**: pick which poles are on, which dancer is on each one, and which routine they play
 - Premium vanilla female peds (Kerry, Poppy, Hot Posh, After Hours club customers, etc.) — not `s_f_y_stripper_*`
-- Pole dances plus VIP-room / nightclub floor routines
+- Nine custom-MLO poles with standing-at-pole coords; dancers use synced pole scenes so they wrap the pole
+- Mixed pole routines (spin / climb / floorwork) plus extra in-place dances; occupied poles auto-cycle so they are not clones
 - Throw cash at a dancer (preset or custom) with raining-cash effects
-- Tips go to the club **Renewed Banking** job account
+- Tips go to the club **Renewed Banking** job account (`vanillaunicorn`)
 - Dirty → clean wash: club keeps **17.5%**, guest receives **82.5%** clean cash
 - Self-service wash desk **or** staff counting a nearby guest’s dirty money
 - ox_lib menus, ox_target / qb-target, QBCore / Qbox / ESX, ox_inventory or qb-inventory
-- Vanilla Unicorn **or Gabz** pole coordinates via one config flag
 
 ## Requirements
 
@@ -36,7 +36,7 @@ ensure djfivem_dancers
 3. Create the club job if you do not already have one (QBCore / Qbox `jobs.lua`):
 
 ```lua
-unicorn = {
+vanillaunicorn = {
     label = 'Vanilla Unicorn',
     defaultDuty = true,
     offDutyPay = false,
@@ -49,12 +49,9 @@ unicorn = {
 },
 ```
 
-`bankAuth = true` is what Renewed Banking uses so bosses can see the club account. The job name (`unicorn`) **must** match `Config.Clubs.unicorn.account`.
+`bankAuth = true` is what Renewed Banking uses so bosses can see the club account. The job name (`vanillaunicorn`) **must** match `Config.Clubs.vanillaunicorn.account`.
 
-4. Open `config.lua`:
-   - Set `Config.UnicornMLO = 'gabz'` if you use Gabz Vanilla Unicorn
-   - Point `Config.Clubs.*.jobs` at your real job names
-   - Adjust pole / wash coordinates if you use a different MLO
+4. Open `config.lua` if you need to slide a dancer onto the pole (`Config.PoleAlign` or a per-pole `offset`) or move the wash desk.
 
 ## Dirty money
 
@@ -70,14 +67,14 @@ Clean cash is added as ox_inventory `money` when ox_inventory is running, otherw
 
 ## How it plays
 
-**Staff (unicorn job, on duty)**  
-Target a pole → Stage Control → pick a dancer and routine.
+**Staff (`vanillaunicorn` job, on duty)**  
+Target any pole or the wash desk → **Stage Board** (or `/dancermenu`). Tick which poles to fill or clear, or open a pole to pick the dancer and routine.
 
 **Guests**  
 Target the dancer or pole → Throw Money. Cash comes from pocket money and is deposited to the club account.
 
 **Wash**  
-Use the office desk (default VU office) to wash your own dirty money, or staff can use **Count Their Dirty Money** on a nearby guest. The guest confirms. Example: `$10,000` dirty → **$1,750** to the Unicorn account, **$8,250** clean cash back.
+Use the office desk to wash your own dirty money, or staff can use **Count Their Dirty Money** on a nearby guest. The guest confirms. Example: `$10,000` dirty → **$1,750** to the Unicorn account, **$8,250** clean cash back.
 
 Fee percent is `Config.Wash.feePercent` (default `17.5`).
 
@@ -100,6 +97,7 @@ bahama = {
 
 ## Commands
 
+- `/dancermenu` — on-duty `vanillaunicorn` staff, opens the ox_lib stage board
 - `/cleardancers` — admin / console, clears every staged dancer
 
 ## Notes

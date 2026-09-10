@@ -124,17 +124,17 @@ local function washNearby(clubId)
 end
 
 local function setupClub(clubId, club)
-    for poleId, pole in pairs(club.poles) do
-        Target.AddSphere(('dj_pole_%s_%s'):format(clubId, poleId), pole.coords, 1.05, {
+    for poleId, pole in ipairs(club.poles) do
+        Target.AddSphere(('dj_pole_%s_%s'):format(clubId, poleId), pole.coords, 1.25, {
             {
                 name = ('dj_pole_staff_%s_%s'):format(clubId, poleId),
-                icon = 'fa-solid fa-person-dress',
-                label = locale('stage_control'),
+                icon = 'fa-solid fa-clipboard-list',
+                label = locale('stage_board'),
                 canInteract = function()
                     return Bridge.CanManage(clubId) == true
                 end,
                 onSelect = function()
-                    Dancers.OpenPoleMenu(clubId, poleId)
+                    Dancers.OpenClubMenu(clubId)
                 end,
             },
             {
@@ -153,6 +153,17 @@ local function setupClub(clubId, club)
 
     if Config.Wash.enabled and club.wash then
         local washOptions = {
+            {
+                name = ('dj_board_%s'):format(clubId),
+                icon = 'fa-solid fa-clipboard-list',
+                label = locale('stage_board'),
+                canInteract = function()
+                    return Bridge.CanManage(clubId) == true
+                end,
+                onSelect = function()
+                    Dancers.OpenClubMenu(clubId)
+                end,
+            },
             {
                 name = ('dj_wash_%s'):format(clubId),
                 icon = 'fa-solid fa-money-bill-transfer',
@@ -197,7 +208,9 @@ end
 
 local function setupAll()
     for clubId, club in pairs(Config.Clubs) do
-        setupClub(clubId, club)
+        if DJF.ClubEnabled(club) then
+            setupClub(clubId, club)
+        end
     end
 end
 
@@ -216,6 +229,10 @@ end)
 Bridge.OnPlayerLoaded(function()
     Wait(800)
     refreshDancers()
+end)
+
+RegisterNetEvent('djfivem_dancers:client:openMenu', function()
+    Dancers.OpenNearestClubMenu()
 end)
 
 RegisterNetEvent('djfivem_dancers:client:syncPole', function(clubId, poleId, info)

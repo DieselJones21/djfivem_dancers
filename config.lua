@@ -1,14 +1,24 @@
 Config = {}
 
--- 'vanilla' uses the default Vanilla Unicorn interior.
--- 'gabz' uses the common Gabz Vanilla Unicorn pole positions.
-Config.UnicornMLO = 'vanilla'
-
 Config.Debug = false
 Config.Target = 'auto' -- auto | ox | qb | none (E key fallback is always available)
 Config.RequireOnDuty = true
 Config.InteractDistance = 2.0
 Config.TipDistance = 3.0
+-- How close staff must be to any club pole to use the stage board
+Config.ManageDistance = 55.0
+
+-- Standing-at-pole coords are used as the scene origin. Tweak if a dancer sits
+-- off the pole: positive Z lifts them, XY slides them on the floor.
+-- Per-pole `offset` in the club poles table is added on top of this.
+Config.PoleAlign = vector3(0.0, 0.0, 0.0)
+
+-- Dancers automatically switch to a different pole routine so they are not clones.
+Config.AnimationCycle = {
+    enabled = true,
+    minMs = 45000,
+    maxMs = 90000,
+}
 
 -- Premium vanilla female peds (story / DLC). No s_f_y_stripper / stripperlite models.
 Config.Dancers = {
@@ -42,20 +52,28 @@ Config.Dancers = {
     { model = 'a_f_y_hipster_02',        label = 'Harper' },
 }
 
+-- attach = 'scene' wraps the pole (correct look). attach = 'anim' plays on the spot.
 Config.Routines = {
     pole = {
-        { dict = 'mini@strip_club@pole_dance@pole_dance1', clip = 'pd_dance_01', label = 'Pole Routine 1' },
-        { dict = 'mini@strip_club@pole_dance@pole_dance2', clip = 'pd_dance_02', label = 'Pole Routine 2' },
-        { dict = 'mini@strip_club@pole_dance@pole_dance3', clip = 'pd_dance_03', label = 'Pole Routine 3' },
+        { dict = 'mini@strip_club@pole_dance@pole_dance1', clip = 'pd_dance_01', label = 'Pole Spin', attach = 'scene' },
+        { dict = 'mini@strip_club@pole_dance@pole_dance2', clip = 'pd_dance_02', label = 'Pole Climb', attach = 'scene' },
+        { dict = 'mini@strip_club@pole_dance@pole_dance3', clip = 'pd_dance_03', label = 'Pole Floorwork', attach = 'scene' },
+        { dict = 'mini@strip_club@private_dance@part1', clip = 'priv_dance_p1', label = 'Stage Tease 1', attach = 'anim' },
+        { dict = 'mini@strip_club@private_dance@part2', clip = 'priv_dance_p2', label = 'Stage Tease 2', attach = 'anim' },
+        { dict = 'mini@strip_club@private_dance@part3', clip = 'priv_dance_p3', label = 'Stage Tease 3', attach = 'anim' },
+        { dict = 'mini@strip_club@private_dance@idle', clip = 'priv_dance_idle', label = 'Idle Tease', attach = 'anim' },
+        { dict = 'anim@amb@nightclub@mini@dance@dance_solo@female@var_a@', clip = 'high_center', label = 'Club Solo A', attach = 'anim' },
+        { dict = 'anim@amb@nightclub@mini@dance@dance_solo@female@var_b@', clip = 'high_center', label = 'Club Solo B', attach = 'anim' },
+        { dict = 'anim@amb@nightclub@mini@dance@dance_solo@female@var_a@', clip = 'med_center', label = 'Club Groove', attach = 'anim' },
     },
     platform = {
-        { dict = 'mini@strip_club@private_dance@part1', clip = 'priv_dance_p1', label = 'Floor Routine 1' },
-        { dict = 'mini@strip_club@private_dance@part2', clip = 'priv_dance_p2', label = 'Floor Routine 2' },
-        { dict = 'mini@strip_club@private_dance@part3', clip = 'priv_dance_p3', label = 'Floor Routine 3' },
-        { dict = 'mini@strip_club@private_dance@idle', clip = 'priv_dance_idle', label = 'Tease Idle' },
-        { dict = 'anim@amb@nightclub@mini@dance@dance_solo@female@var_a@', clip = 'high_center', label = 'Club Solo A' },
-        { dict = 'anim@amb@nightclub@mini@dance@dance_solo@female@var_b@', clip = 'high_center', label = 'Club Solo B' },
-        { dict = 'anim@amb@nightclub@mini@dance@dance_solo@female@var_a@', clip = 'med_center', label = 'Club Groove' },
+        { dict = 'mini@strip_club@private_dance@part1', clip = 'priv_dance_p1', label = 'Floor Routine 1', attach = 'anim' },
+        { dict = 'mini@strip_club@private_dance@part2', clip = 'priv_dance_p2', label = 'Floor Routine 2', attach = 'anim' },
+        { dict = 'mini@strip_club@private_dance@part3', clip = 'priv_dance_p3', label = 'Floor Routine 3', attach = 'anim' },
+        { dict = 'mini@strip_club@private_dance@idle', clip = 'priv_dance_idle', label = 'Tease Idle', attach = 'anim' },
+        { dict = 'anim@amb@nightclub@mini@dance@dance_solo@female@var_a@', clip = 'high_center', label = 'Club Solo A', attach = 'anim' },
+        { dict = 'anim@amb@nightclub@mini@dance@dance_solo@female@var_b@', clip = 'high_center', label = 'Club Solo B', attach = 'anim' },
+        { dict = 'anim@amb@nightclub@mini@dance@dance_solo@female@var_a@', clip = 'med_center', label = 'Club Groove', attach = 'anim' },
     },
 }
 
@@ -103,93 +121,42 @@ Config.DirtyMoney = {
 
 Config.Banking = {
     resource = 'Renewed-Banking',
-    -- Transaction titles shown in Renewed Banking history
     washTitle = 'Dirty Money Wash',
     tipTitle = 'Stage Tips',
 }
 
-local unicornVanilla = {
-    poles = {
-        { coords = vector3(112.60, -1286.76, 28.56), heading = 0.0, style = 'pole',     label = 'Main Stage' },
-        { coords = vector3(104.18, -1293.94, 29.26), heading = 0.0, style = 'pole',     label = 'Left Pole' },
-        { coords = vector3(102.24, -1290.54, 29.26), heading = 0.0, style = 'pole',     label = 'Right Pole' },
-        { coords = vector3(118.77, -1302.42, 29.27), heading = 210.0, style = 'platform', label = 'VIP Room 1' },
-        { coords = vector3(113.35, -1303.17, 29.27), heading = 210.0, style = 'platform', label = 'VIP Room 2' },
-        { coords = vector3(111.25, -1301.80, 29.27), heading = 30.0,  style = 'platform', label = 'VIP Room 3' },
-    },
-    wash = {
-        coords = vector3(96.22, -1292.71, 29.27),
-        radius = 1.15,
-        label = 'Count Dirty Money',
-    },
-}
-
-local unicornGabz = {
-    poles = {
-        { coords = vector3(108.85, -1289.03, 29.25), heading = 0.0, style = 'pole',     label = 'Main Stage' },
-        { coords = vector3(104.77, -1294.17, 29.25), heading = 0.0, style = 'pole',     label = 'Left Pole' },
-        { coords = vector3(102.23, -1289.85, 29.25), heading = 0.0, style = 'pole',     label = 'Right Pole' },
-        { coords = vector3(118.71, -1302.35, 29.27), heading = 210.0, style = 'platform', label = 'VIP Room 1' },
-        { coords = vector3(113.40, -1303.20, 29.27), heading = 210.0, style = 'platform', label = 'VIP Room 2' },
-        { coords = vector3(111.22, -1301.85, 29.27), heading = 30.0,  style = 'platform', label = 'VIP Room 3' },
-    },
-    wash = {
-        coords = vector3(93.15, -1292.12, 29.26),
-        radius = 1.15,
-        label = 'Count Dirty Money',
-    },
-}
-
-local unicornLayout = Config.UnicornMLO == 'gabz' and unicornGabz or unicornVanilla
-
 Config.Clubs = {
-    unicorn = {
+    vanillaunicorn = {
+        enabled = true,
         label = 'Vanilla Unicorn',
-        -- Renewed Banking job account name (must match the job name)
-        account = 'unicorn',
-        -- job name = minimum grade that can place / remove dancers
+        account = 'vanillaunicorn',
         jobs = {
-            unicorn = 0,
             vanillaunicorn = 0,
         },
-        -- Minimum grade that can wash money for a guest (desk is still available in "self"/"both")
         washGrade = 0,
         blip = {
             enabled = true,
-            coords = vector3(128.87, -1298.93, 29.23),
+            coords = vector3(-705.04, -712.28, 30.17),
             sprite = 121,
             color = 8,
             scale = 0.8,
             label = 'Vanilla Unicorn',
         },
-        poles = unicornLayout.poles,
-        wash = unicornLayout.wash,
-    },
-
-    -- After Hours nightclub interior (go-go platforms, not poles).
-    -- Enable this job on your server or remove the club if you do not use it.
-    nightclub = {
-        label = 'Nightclub',
-        account = 'nightclub',
-        jobs = {
-            nightclub = 0,
-        },
-        washGrade = 0,
-        blip = {
-            enabled = false,
-            coords = vector3(-16.75, 216.50, 106.75),
-            sprite = 614,
-            color = 7,
-            scale = 0.8,
-            label = 'Nightclub',
-        },
+        -- Coords taken while standing on each pole. Scene origin uses these plus PoleAlign.
         poles = {
-            { coords = vector3(-1598.57, -3015.68, -78.21), heading = 270.0, style = 'platform', label = 'Left Platform' },
-            { coords = vector3(-1596.22, -3007.97, -78.21), heading = 270.0, style = 'platform', label = 'Right Platform' },
-            { coords = vector3(-1594.12, -3012.05, -78.21), heading = 90.0,  style = 'platform', label = 'Center Stage' },
+            { coords = vector3(-712.95, -705.11, 30.17), heading = 0.0, style = 'pole', label = 'Pole 1 · Lower West' },
+            { coords = vector3(-703.12, -709.49, 30.17), heading = 0.0, style = 'pole', label = 'Pole 2 · Lower East' },
+            { coords = vector3(-679.94, -696.96, 35.08), heading = 0.0, style = 'pole', label = 'Pole 3 · Upper East 1' },
+            { coords = vector3(-679.85, -703.98, 35.08), heading = 0.0, style = 'pole', label = 'Pole 4 · Upper East 2' },
+            { coords = vector3(-679.87, -710.84, 35.08), heading = 0.0, style = 'pole', label = 'Pole 5 · Upper East 3' },
+            { coords = vector3(-679.86, -717.88, 35.08), heading = 0.0, style = 'pole', label = 'Pole 6 · Upper East 4' },
+            { coords = vector3(-695.54, -722.07, 35.28), heading = 0.0, style = 'pole', label = 'Pole 7 · Upper South 1' },
+            { coords = vector3(-703.24, -722.14, 35.28), heading = 0.0, style = 'pole', label = 'Pole 8 · Upper South 2' },
+            { coords = vector3(-710.97, -722.08, 35.28), heading = 0.0, style = 'pole', label = 'Pole 9 · Upper South 3' },
         },
+        -- Move this to your office / cashier if it is in a wall.
         wash = {
-            coords = vector3(-1618.52, -3012.06, -75.21),
+            coords = vector3(-717.50, -705.10, 30.17),
             radius = 1.2,
             label = 'Count Dirty Money',
         },

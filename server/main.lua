@@ -4,6 +4,7 @@ local DancerState = {}
 local tipCooldown = {}
 local washCooldown = {}
 local busy = {}
+local dbLoaded = false
 
 local function poleExists(clubId, poleId)
     return DJF.GetPole(clubId, poleId) ~= nil
@@ -28,6 +29,10 @@ local function nearClub(src, clubId, dist)
     if not ped or ped == 0 then return false end
     local playerCoords = GetEntityCoords(ped)
     for i = 1, #club.poles do
+        local coords = DJF.GetPoleTransform(clubId, i)
+        if coords and #(playerCoords - coords) <= dist then
+            return true
+        end
         if #(playerCoords - club.poles[i].coords) <= dist then
             return true
         end
@@ -60,12 +65,72 @@ local function nearClubPoint(src, coords, dist)
 end
 
 lib.callback.register('djfivem_dancers:server:getState', function()
-    return DancerState
+    while not dbLoaded do
+        Wait(50)
+    end
+    return { dancers = DancerState, placements = DJF.Placements }
 end)
 
 lib.callback.register('djfivem_dancers:server:getDirty', function(source)
     local total = Bridge.GetDirty(source)
     return total
+end)
+
+AddEventHandler('djfivem_dancers:server:dbReady', function()
+    local dancers, placements = Persist.Load(DancerState)
+    DancerState = dancers or DancerState
+    DJF.SetPlacements(placements or {})
+    dbLoaded = true
+    TriggerClientEvent('djfivem_dancers:client:syncPlacements', -1, DJF.Placements)
+    TriggerClientEvent('djfivem_dancers:client:syncAll', -1, DancerState)
+end)
+
+CreateThread(function()
+    Wait(8000)
+    if not dbLoaded then
+        dbLoaded = true
+        print('[djfivem_dancers] Continuing without SQL persistence')
+    end
+end)
+
+local function nearWashLocation(src, clubId)
+    local club = DJF.GetClub(clubId)
+    if not club then return false end
+    if club.wash and nearClubPoint(src, club.wash.coords, 4.0) then
+        return true
+    end
+    local occupied = DancerState[clubId] or {}
+    for poleId in pairs(occupied) do
+        local coords = DJF.GetPoleTransform(clubId, poleId)
+        if coords and nearClubPoint(src, coords, Config.TipDistance + 1.5) then
+            return true
+        end
+    end
+    return false
+end
+
+lib.callback.register('djfivem_dancers:server:savePlacement', function(source, clubId, poleId, pos)
+    poleId = tonumber(poleId)
+    local club = DJF.GetClub(clubId)
+    local pole = DJF.GetPole(clubId, poleId)
+    if not club or not pole or type(pos) ~= 'table' then return false, locale('too_far') end
+    local allowed, reason = Bridge.CanManage(source, clubId)
+    if not allowed then return false, failReason(reason) end
+    if not nearClub(source, clubId, Config.ManageDistance) then
+        return false, locale('too_far')
+    end
+    local x, y, z = tonumber(pos.x), tonumber(pos.y), tonumber(pos.z)
+    local heading = tonumber(pos.heading) or 0.0
+    if not x or not y or not z then return false, locale('too_far') end
+    local maxDist = (Config.Editor and Config.Editor.maxDistanceFromPole) or 12.0
+    if #(vector3(x, y, z) - pole.coords) > maxDist then
+        return false, locale('editor_too_far_pole')
+    end
+    local data = { x = x, y = y, z = z, heading = heading }
+    DJF.SetPlacement(clubId, poleId, data)
+    Persist.SavePlacement(clubId, poleId, data)
+    TriggerClientEvent('djfivem_dancers:client:syncPlacement', -1, clubId, poleId, data)
+    return true
 end)
 
 RegisterNetEvent('djfivem_dancers:server:place', function(clubId, poleId, dancerIndex, routineIndex)
@@ -91,6 +156,7 @@ RegisterNetEvent('djfivem_dancers:server:place', function(clubId, poleId, dancer
     if not routines[routineIndex] then routineIndex = 1 end
     local info = makeDancerInfo(src, dancerIndex, routineIndex)
     ensureClub(clubId)[poleId] = info
+    Persist.SaveActive(clubId, poleId, info)
     TriggerClientEvent('djfivem_dancers:client:syncPole', -1, clubId, poleId, info)
     TriggerClientEvent('ox_lib:notify', src, {
         title = club.label,
@@ -125,6 +191,7 @@ RegisterNetEvent('djfivem_dancers:server:routine', function(clubId, poleId, rout
     current.routine = routineIndex
     current.phase = math.random()
     current.rate = 0.92 + math.random() * 0.16
+    Persist.SaveActive(clubId, poleId, current)
     TriggerClientEvent('djfivem_dancers:client:syncPole', -1, clubId, poleId, current)
     TriggerClientEvent('ox_lib:notify', src, { title = club.label, description = locale('routine_changed'), type = 'success' })
 end)
@@ -144,6 +211,7 @@ RegisterNetEvent('djfivem_dancers:server:remove', function(clubId, poleId)
         return
     end
     ensureClub(clubId)[poleId] = nil
+    Persist.SaveActive(clubId, poleId, nil)
     TriggerClientEvent('djfivem_dancers:client:syncPole', -1, clubId, poleId, nil)
     TriggerClientEvent('ox_lib:notify', src, { title = club.label, description = locale('dancer_removed'), type = 'success' })
 end)
@@ -165,12 +233,10 @@ RegisterNetEvent('djfivem_dancers:server:fill', function(clubId, poleIds)
     local used = {}
     for _, info in pairs(ensureClub(clubId)) do
         if info.dancerIndex then used[info.dancerIndex] = true end
-        if info.model then used[info.model] = true end
     end
     local pool = {}
     for i = 1, #Config.Dancers do
-        local dancer = Config.Dancers[i]
-        if not used[i] and not used[dancer.model] then
+        if not used[i] then
             pool[#pool + 1] = i
         end
     end
@@ -191,6 +257,7 @@ RegisterNetEvent('djfivem_dancers:server:fill', function(clubId, poleIds)
             local info = makeDancerInfo(src, dancerIndex, routineIndex)
             if info then
                 ensureClub(clubId)[poleId] = info
+                Persist.SaveActive(clubId, poleId, info)
                 TriggerClientEvent('djfivem_dancers:client:syncPole', -1, clubId, poleId, info)
                 placed = placed + 1
             end
@@ -222,6 +289,7 @@ RegisterNetEvent('djfivem_dancers:server:clearPoles', function(clubId, poleIds)
         local poleId = tonumber(poleIds[i])
         if DJF.GetPole(clubId, poleId) then
             ensureClub(clubId)[poleId] = nil
+            Persist.SaveActive(clubId, poleId, nil)
             TriggerClientEvent('djfivem_dancers:client:syncPole', -1, clubId, poleId, nil)
             cleared = cleared + 1
         end
@@ -259,7 +327,8 @@ lib.callback.register('djfivem_dancers:server:tip', function(source, clubId, pol
     if cooling(tipCooldown, source, Config.Tips.cooldown) then
         return false, locale('cooldown')
     end
-    if not nearClubPoint(source, pole.coords, Config.TipDistance + 2.0) then
+    local tipCoords = DJF.GetPoleTransform(clubId, poleId)
+    if not tipCoords or not nearClubPoint(source, tipCoords, Config.TipDistance + 2.0) then
         return false, locale('too_far')
     end
     if not Bridge.RemoveCash(source, amount, 'stage-tip') then
@@ -323,7 +392,7 @@ lib.callback.register('djfivem_dancers:server:wash', function(source, clubId, am
         return false, locale('cooldown')
     end
     if busy[source] then return false, locale('wash_busy') end
-    if not nearClubPoint(source, club.wash.coords, 4.0) then
+    if not nearWashLocation(source, clubId) then
         return false, locale('too_far')
     end
     busy[source] = true
@@ -351,7 +420,7 @@ lib.callback.register('djfivem_dancers:server:washOther', function(source, clubI
         return false, locale('target_offline')
     end
     if busy[source] or busy[targetId] then return false, locale('wash_busy') end
-    if not nearClubPoint(source, club.wash.coords, 6.0) then
+    if not nearWashLocation(source, clubId) then
         return false, locale('too_far')
     end
     local staffPed = GetPlayerPed(source)
@@ -401,6 +470,24 @@ lib.addCommand('dancermenu', {
     TriggerClientEvent('djfivem_dancers:client:openMenu', source)
 end)
 
+lib.addCommand(Config.Editor.command or 'editdancers', {
+    help = 'Move dancer placements and save them',
+}, function(source)
+    if source == 0 then return end
+    local can = false
+    for clubId, club in pairs(Config.Clubs) do
+        if DJF.ClubEnabled(club) and Bridge.CanManage(source, clubId) then
+            can = true
+            break
+        end
+    end
+    if not can then
+        TriggerClientEvent('ox_lib:notify', source, { title = locale('club_title'), description = locale('not_allowed'), type = 'error' })
+        return
+    end
+    TriggerClientEvent('djfivem_dancers:client:openEditor', source)
+end)
+
 lib.addCommand('cleardancers', {
     help = 'Clear all club dancers (admin)',
 }, function(source)
@@ -409,6 +496,7 @@ lib.addCommand('cleardancers', {
         return
     end
     DancerState = {}
+    Persist.ClearAllActive()
     TriggerClientEvent('djfivem_dancers:client:syncAll', -1, DancerState)
     if source > 0 then
         TriggerClientEvent('ox_lib:notify', source, { title = 'Nightclub', description = locale('dancer_removed'), type = 'success' })

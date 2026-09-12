@@ -29,11 +29,15 @@ local function loadDict(dict)
     return true
 end
 
-local function playRoutine(ped, pole, routine, extras)
+local function playRoutine(ped, clubId, poleId, pole, routine, extras)
     if not DoesEntityExist(ped) or not routine then return end
     if not loadDict(routine.dict) then return end
     extras = extras or {}
-    local coords = DJF.PoleSceneCoords(pole)
+    local coords, heading = DJF.GetPoleTransform(clubId, poleId)
+    if not coords then
+        coords = DJF.PoleSceneCoords(pole)
+        heading = pole.heading or 0.0
+    end
     ClearPedTasksImmediately(ped)
     SetEntityCollision(ped, false, false)
 
@@ -41,8 +45,8 @@ local function playRoutine(ped, pole, routine, extras)
     if useScene then
         FreezeEntityPosition(ped, false)
         SetEntityCoordsNoOffset(ped, coords.x, coords.y, coords.z, false, false, false)
-        SetEntityHeading(ped, pole.heading or 0.0)
-        local scene = CreateSynchronizedScene(coords.x, coords.y, coords.z, 0.0, 0.0, pole.heading or 0.0, 2)
+        SetEntityHeading(ped, heading)
+        local scene = CreateSynchronizedScene(coords.x, coords.y, coords.z, 0.0, 0.0, heading, 2)
         TaskSynchronizedScene(ped, scene, routine.dict, routine.clip, 4.0, -4.0, -1, 1, 0.0, 0)
         SetSynchronizedSceneLooped(scene, true)
         SetSynchronizedSceneHoldLastFrame(scene, false)
@@ -52,7 +56,7 @@ local function playRoutine(ped, pole, routine, extras)
     end
 
     SetEntityCoordsNoOffset(ped, coords.x, coords.y, coords.z, false, false, false)
-    SetEntityHeading(ped, pole.heading or 0.0)
+    SetEntityHeading(ped, heading)
     FreezeEntityPosition(ped, true)
     TaskPlayAnim(ped, routine.dict, routine.clip, 8.0, -8.0, -1, 1, extras.phase or 0.0, false, false, false)
 end
@@ -66,6 +70,20 @@ local function dancerOptions(clubId, poleId)
             distance = Config.TipDistance,
             onSelect = function()
                 Dancers.OpenTipMenu(clubId, poleId)
+            end,
+        },
+        {
+            name = ('dj_wash_%s_%s'):format(clubId, poleId),
+            icon = 'fa-solid fa-money-bill-transfer',
+            label = locale('wash_money'),
+            distance = Config.TipDistance,
+            canInteract = function()
+                return Config.Wash.enabled and Config.Wash.mode ~= 'employee'
+            end,
+            onSelect = function()
+                if OpenClubWashMenu then
+                    OpenClubWashMenu(clubId)
+                end
             end,
         },
         {
@@ -106,15 +124,15 @@ function Dancers.Spawn(clubId, poleId, info)
         return
     end
 
-    local coords = DJF.PoleSceneCoords(pole)
-    local ped = CreatePed(4, hash, coords.x, coords.y, coords.z, pole.heading or 0.0, false, true)
+    local coords, heading = DJF.GetPoleTransform(clubId, poleId)
+    local ped = CreatePed(4, hash, coords.x, coords.y, coords.z, heading or 0.0, false, true)
     SetEntityAsMissionEntity(ped, true, true)
     SetBlockingOfNonTemporaryEvents(ped, true)
     SetPedDiesWhenInjured(ped, false)
     SetPedCanRagdollFromPlayerImpact(ped, false)
     SetPedCanBeTargetted(ped, true)
     SetEntityInvincible(ped, true)
-    SetPedDefaultComponentVariation(ped)
+    DJF.ApplyDancerAppearance(ped, info.dancerIndex)
     SetPedFleeAttributes(ped, 0, false)
     SetPedCombatAttributes(ped, 17, true)
     SetPedConfigFlag(ped, 118, true)
@@ -123,7 +141,7 @@ function Dancers.Spawn(clubId, poleId, info)
     SetModelAsNoLongerNeeded(hash)
 
     local routine = DJF.GetRoutine(pole.style or 'pole', info.routine or 1)
-    local scene = playRoutine(ped, pole, routine, info)
+    local scene = playRoutine(ped, clubId, poleId, pole, routine, info)
     Target.AddLocalEntity(ped, dancerOptions(clubId, poleId))
 
     local k = key(clubId, poleId)
@@ -141,16 +159,20 @@ function Dancers.Spawn(clubId, poleId, info)
         while spawned[k] and spawned[k].ped == ped and DoesEntityExist(ped) do
             local live = state[clubId] and state[clubId][poleId]
             if not live then break end
-            local current = DJF.GetRoutine(pole.style or 'pole', live.routine or 1)
-            local useScene = pole.style == 'pole' and (current.attach or 'scene') == 'scene'
-            if useScene then
-                if not spawned[k].scene or not IsSynchronizedSceneRunning(spawned[k].scene) then
-                    spawned[k].scene = playRoutine(ped, pole, current, live)
+            if spawned[k].editing then
+                Wait(500)
+            else
+                local current = DJF.GetRoutine(pole.style or 'pole', live.routine or 1)
+                local useScene = pole.style == 'pole' and (current.attach or 'scene') == 'scene'
+                if useScene then
+                    if not spawned[k].scene or not IsSynchronizedSceneRunning(spawned[k].scene) then
+                        spawned[k].scene = playRoutine(ped, clubId, poleId, pole, current, live)
+                    end
+                elseif not IsEntityPlayingAnim(ped, current.dict, current.clip, 3) then
+                    playRoutine(ped, clubId, poleId, pole, current, live)
                 end
-            elseif not IsEntityPlayingAnim(ped, current.dict, current.clip, 3) then
-                playRoutine(ped, pole, current, live)
+                Wait(4000)
             end
-            Wait(4000)
         end
     end)
 end
@@ -170,7 +192,7 @@ function Dancers.SyncPole(clubId, poleId, info)
         state[clubId][poleId] = info
         local pole = DJF.GetPole(clubId, poleId)
         local routine = DJF.GetRoutine(pole.style or 'pole', info.routine or 1)
-        existing.scene = playRoutine(existing.ped, pole, routine, info)
+        existing.scene = playRoutine(existing.ped, clubId, poleId, pole, routine, info)
         existing.dict, existing.clip = routine.dict, routine.clip
         return
     end
@@ -212,6 +234,22 @@ end
 function Dancers.GetPed(clubId, poleId)
     local data = spawned[key(clubId, poleId)]
     return data and data.ped
+end
+
+function Dancers.SetEditing(clubId, poleId, isEditing)
+    local data = spawned[key(clubId, poleId)]
+    if not data then return nil end
+    data.editing = isEditing and true or nil
+    return data.ped
+end
+
+function Dancers.Replay(clubId, poleId)
+    local info = Dancers.GetInfo(clubId, poleId)
+    local pole = DJF.GetPole(clubId, poleId)
+    local data = spawned[key(clubId, poleId)]
+    if not info or not pole or not data or not data.ped then return end
+    local routine = DJF.GetRoutine(pole.style or 'pole', info.routine or 1)
+    data.scene = playRoutine(data.ped, clubId, poleId, pole, routine, info)
 end
 
 function Dancers.Cleanup()
@@ -326,7 +364,22 @@ function Dancers.OpenPoleMenu(clubId, poleId)
             icon = 'money-bill-wave',
             onSelect = function() Dancers.OpenTipMenu(clubId, poleId) end,
         }
+        options[#options + 1] = {
+            title = locale('wash_money'),
+            icon = 'money-bill-transfer',
+            onSelect = function()
+                if OpenClubWashMenu then OpenClubWashMenu(clubId) end
+            end,
+        }
     end
+    options[#options + 1] = {
+        title = locale('edit_placement'),
+        description = locale('edit_placement_desc'),
+        icon = 'up-down-left-right',
+        onSelect = function()
+            Editor.Start(clubId, poleId)
+        end,
+    }
     lib.registerContext({
         id = 'djfivem_dancers_pole',
         title = pole.label,
@@ -388,6 +441,14 @@ function Dancers.OpenClubMenu(clubId)
                 SetTimeout(300, function()
                     Dancers.OpenClubMenu(clubId)
                 end)
+            end,
+        },
+        {
+            title = locale('edit_placements'),
+            description = locale('edit_placements_desc'),
+            icon = 'up-down-left-right',
+            onSelect = function()
+                Editor.OpenList(clubId)
             end,
         },
     }
@@ -485,7 +546,7 @@ function Dancers.PlayTipFx(clubId, poleId)
     local pole = DJF.GetPole(clubId, poleId)
     if not pole then return end
     local ped = Dancers.GetPed(clubId, poleId)
-    local coords = ped and GetEntityCoords(ped) or DJF.PoleSceneCoords(pole)
+    local coords = ped and GetEntityCoords(ped) or select(1, DJF.GetPoleTransform(clubId, poleId))
     if loadPtfx('scr_xs_celebration') then
         UseParticleFxAsset('scr_xs_celebration')
         StartParticleFxNonLoopedAtCoord('scr_xs_money_rain', coords.x, coords.y, coords.z + 0.9, 0.0, 0.0, 0.0, 1.15, false, false, false)

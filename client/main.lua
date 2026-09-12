@@ -23,7 +23,7 @@ local function doWashProgress(amount)
     })
 end
 
-local function openWashMenu(clubId)
+function OpenClubWashMenu(clubId)
     if Config.Wash.mode == 'employee' then
         notify(locale('not_allowed'), 'error')
         return
@@ -148,6 +148,17 @@ local function setupClub(clubId, club)
                     Dancers.OpenTipMenu(clubId, poleId)
                 end,
             },
+            {
+                name = ('dj_pole_wash_%s_%s'):format(clubId, poleId),
+                icon = 'fa-solid fa-money-bill-transfer',
+                label = locale('wash_money'),
+                canInteract = function()
+                    return Config.Wash.enabled and Config.Wash.mode ~= 'employee' and Dancers.HasDancer(clubId, poleId)
+                end,
+                onSelect = function()
+                    OpenClubWashMenu(clubId)
+                end,
+            },
         })
     end
 
@@ -172,7 +183,7 @@ local function setupClub(clubId, club)
                     return Config.Wash.mode ~= 'employee'
                 end,
                 onSelect = function()
-                    openWashMenu(clubId)
+                    OpenClubWashMenu(clubId)
                 end,
             },
         }
@@ -215,8 +226,13 @@ local function setupAll()
 end
 
 local function refreshDancers()
-    local full = lib.callback.await('djfivem_dancers:server:getState', false)
-    Dancers.ApplyState(full)
+    local payload = lib.callback.await('djfivem_dancers:server:getState', false)
+    if type(payload) == 'table' and payload.dancers then
+        DJF.SetPlacements(payload.placements or {})
+        Dancers.ApplyState(payload.dancers)
+    else
+        Dancers.ApplyState(payload)
+    end
 end
 
 CreateThread(function()
@@ -235,6 +251,22 @@ RegisterNetEvent('djfivem_dancers:client:openMenu', function()
     Dancers.OpenNearestClubMenu()
 end)
 
+RegisterNetEvent('djfivem_dancers:client:openEditor', function()
+    Editor.OpenNearest()
+end)
+
+RegisterNetEvent('djfivem_dancers:client:syncPlacements', function(data)
+    DJF.SetPlacements(data)
+end)
+
+RegisterNetEvent('djfivem_dancers:client:syncPlacement', function(clubId, poleId, data)
+    DJF.SetPlacement(clubId, poleId, data)
+    local info = Dancers.GetInfo(clubId, poleId)
+    if info then
+        Dancers.Spawn(clubId, poleId, info)
+    end
+end)
+
 RegisterNetEvent('djfivem_dancers:client:syncPole', function(clubId, poleId, info)
     Dancers.SyncPole(clubId, poleId, info)
 end)
@@ -244,9 +276,9 @@ RegisterNetEvent('djfivem_dancers:client:syncAll', function(full)
 end)
 
 RegisterNetEvent('djfivem_dancers:client:tipFx', function(clubId, poleId)
-    local pole = DJF.GetPole(clubId, poleId)
-    if not pole then return end
-    if #(GetEntityCoords(PlayerPedId()) - pole.coords) > 40.0 then return end
+    local coords = DJF.GetPoleTransform(clubId, poleId)
+    if not coords then return end
+    if #(GetEntityCoords(PlayerPedId()) - coords) > 40.0 then return end
     Dancers.PlayTipFx(clubId, poleId)
 end)
 

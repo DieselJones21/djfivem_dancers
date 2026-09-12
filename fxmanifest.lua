@@ -19,11 +19,14 @@ client_scripts {
     'client/bridge.lua',
     'client/target.lua',
     'client/dancers.lua',
+    'client/editor.lua',
     'client/main.lua',
 }
 
 server_scripts {
+    '@oxmysql/lib/MySQL.lua',
     'server/bridge.lua',
+    'server/persist.lua',
     'server/main.lua',
 }
 
@@ -33,4 +36,5 @@ files {
 
 dependencies {
     'ox_lib',
+    'oxmysql',
 }

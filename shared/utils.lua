@@ -77,6 +77,67 @@ function DJF.PoleSceneCoords(pole)
     )
 end
 
+DJF.Placements = DJF.Placements or {}
+
+function DJF.SetPlacements(data)
+    DJF.Placements = data or {}
+end
+
+function DJF.SetPlacement(clubId, poleId, data)
+    poleId = tonumber(poleId) or poleId
+    DJF.Placements[clubId] = DJF.Placements[clubId] or {}
+    DJF.Placements[clubId][poleId] = data
+end
+
+---@param clubId string
+---@param poleId number|string
+---@return vector3|nil
+---@return number
+function DJF.GetPoleTransform(clubId, poleId)
+    local pole = DJF.GetPole(clubId, poleId)
+    if not pole then return nil, 0.0 end
+    poleId = tonumber(poleId) or poleId
+    local saved = DJF.Placements[clubId] and DJF.Placements[clubId][poleId]
+    if not saved and DJF.Placements[clubId] then
+        saved = DJF.Placements[clubId][tostring(poleId)]
+    end
+    if saved and saved.x then
+        return vector3(saved.x + 0.0, saved.y + 0.0, saved.z + 0.0), (saved.heading or 0.0) + 0.0
+    end
+    return DJF.PoleSceneCoords(pole), pole.heading or 0.0
+end
+
+---@param ped number
+---@param dancerIndex number|nil
+function DJF.ApplyDancerAppearance(ped, dancerIndex)
+    if not ped or ped == 0 then return end
+    SetPedDefaultComponentVariation(ped)
+    local dancer = dancerIndex and Config.Dancers[dancerIndex]
+    if not dancer then return end
+    if dancer.blend then
+        local a, b, mix = dancer.blend[1], dancer.blend[2], dancer.blend[3] or 0.5
+        SetPedHeadBlendData(ped, a, b, 0, a, b, 0, mix, mix, 0.0, false)
+    end
+    if dancer.hair then
+        SetPedComponentVariation(ped, 2, dancer.hair[1], dancer.hair[2] or 0, 0)
+        if dancer.hair[3] then
+            SetPedHairColor(ped, dancer.hair[3], dancer.hair[4] or dancer.hair[3])
+        end
+    end
+    if dancer.outfit then
+        for i = 1, #dancer.outfit do
+            local c = dancer.outfit[i]
+            SetPedComponentVariation(ped, c[1], c[2], c[3] or 0, 0)
+        end
+    end
+    if dancer.props then
+        for i = 1, #dancer.props do
+            local p = dancer.props[i]
+            SetPedPropIndex(ped, p[1], p[2], p[3] or 0, true)
+        end
+    end
+end
+
 ---@param style string|nil
 ---@return table
 function DJF.SceneRoutineIndexes(style)

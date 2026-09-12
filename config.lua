@@ -20,36 +20,54 @@ Config.AnimationCycle = {
     maxMs = 90000,
 }
 
--- Premium vanilla female peds (story / DLC). No s_f_y_stripper / stripperlite models.
+-- In-game placement editor (/editdancers). Saved to SQL.
+Config.Editor = {
+    command = 'editdancers',
+    maxDistanceFromPole = 12.0,
+    moveSpeed = 0.018,
+    slowSpeed = 0.005,
+    fastSpeed = 0.055,
+    rotSpeed = 1.2,
+}
+
+-- Stripper / low-clothing vanilla peds. Freemode entries use a bikini-style outfit.
+-- outfit = { {component, drawable, texture}, ... }
 Config.Dancers = {
-    { model = 'u_f_y_hotposh_01',        label = 'Vivienne' },
-    { model = 'ig_kerrymcintosh_02',     label = 'Kerry' },
-    { model = 'ig_kerrymcintosh',        label = 'Kerry (Classic)' },
-    { model = 'u_f_y_poppymich_02',      label = 'Poppy' },
-    { model = 'u_f_y_poppymich',         label = 'Poppy (Classic)' },
-    { model = 'a_f_y_clubcust_04',       label = 'Aria' },
-    { model = 'a_f_y_clubcust_03',       label = 'Noelle' },
-    { model = 'a_f_y_clubcust_02',       label = 'Mia' },
-    { model = 'a_f_y_clubcust_01',       label = 'Sienna' },
-    { model = 'a_f_y_bevhills_04',       label = 'Brooke' },
-    { model = 'a_f_y_vinewood_04',       label = 'Luna' },
-    { model = 'mp_f_execpa_01',          label = 'Scarlett' },
-    { model = 'mp_f_execpa_02',          label = 'Elena' },
-    { model = 'u_f_y_jewelass_01',       label = 'Jewel' },
-    { model = 'ig_tracydisanto',         label = 'Tracy' },
-    { model = 'a_f_y_smartcaspat_01',    label = 'Cassandra' },
-    { model = 'ig_jackie',               label = 'Jackie' },
-    { model = 'a_f_y_genhot_01',         label = 'Gigi' },
-    { model = 'u_f_y_bikerchic',         label = 'Raven' },
-    { model = 's_f_y_clubbar_01',        label = 'Nikki' },
-    { model = 'a_f_y_bevhills_01',       label = 'Claire' },
-    { model = 'ig_natalia',              label = 'Natalia' },
-    { model = 'u_f_y_spyactress',        label = 'Iris' },
-    { model = 'a_f_y_femaleagent',       label = 'Agent Fox' },
-    { model = 'a_f_y_carclub_01',        label = 'Tessa' },
-    { model = 's_f_y_casino_01',         label = 'Diamond' },
-    { model = 'ig_tonya',                label = 'Tonya' },
-    { model = 'a_f_y_hipster_02',        label = 'Harper' },
+    { model = 's_f_y_stripper_01',   label = 'Amber' },
+    { model = 's_f_y_stripper_02',   label = 'Jade' },
+    { model = 's_f_y_stripperlite',  label = 'Lola' },
+    { model = 'csb_stripper_01',     label = 'Destiny' },
+    { model = 'csb_stripper_02',     label = 'Chanel' },
+    { model = 'a_f_y_topless_01',    label = 'Skye' },
+    { model = 's_f_y_hooker_01',     label = 'Candy' },
+    { model = 's_f_y_hooker_02',     label = 'Roxy' },
+    { model = 's_f_y_hooker_03',     label = 'Trixie' },
+    { model = 'a_f_y_beach_01',      label = 'Summer' },
+    { model = 'a_f_y_beach_02',      label = 'Bree' },
+    { model = 's_f_y_baywatch_01',   label = 'Bay' },
+    { model = 'a_f_y_genhot_01',     label = 'Gigi' },
+    { model = 'u_f_y_bikerchic',     label = 'Raven' },
+    {
+        model = 'mp_f_freemode_01',
+        label = 'Ruby',
+        blend = { 21, 45, 0.45 },
+        hair = { 4, 0, 4, 3 },
+        outfit = { { 2, 4, 0 }, { 3, 15, 0 }, { 4, 15, 0 }, { 6, 35, 0 }, { 8, 14, 0 }, { 11, 15, 0 } },
+    },
+    {
+        model = 'mp_f_freemode_01',
+        label = 'Nova',
+        blend = { 25, 12, 0.4 },
+        hair = { 10, 0, 1, 1 },
+        outfit = { { 2, 10, 0 }, { 3, 15, 0 }, { 4, 15, 1 }, { 6, 5, 0 }, { 8, 14, 0 }, { 11, 15, 0 } },
+    },
+    {
+        model = 'mp_f_freemode_01',
+        label = 'Vixen',
+        blend = { 6, 21, 0.55 },
+        hair = { 15, 0, 27, 27 },
+        outfit = { { 2, 15, 0 }, { 3, 15, 0 }, { 4, 21, 0 }, { 6, 35, 1 }, { 8, 3, 0 }, { 11, 18, 0 } },
+    },
 }
 
 -- attach = 'scene' wraps the pole (correct look). attach = 'anim' plays on the spot.

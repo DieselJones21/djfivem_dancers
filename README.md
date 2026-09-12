@@ -5,18 +5,19 @@ FiveM club resource for **Vanilla Unicorn** that lets on-duty `vanillaunicorn` s
 ## Features
 
 - Job-locked **ox_lib Stage Board**: pick which poles are on, which dancer is on each one, and which routine they play
-- Premium vanilla female peds (Kerry, Poppy, Hot Posh, After Hours club customers, etc.) — not `s_f_y_stripper_*`
-- Nine custom-MLO poles with standing-at-pole coords; dancers use synced pole scenes so they wrap the pole
+- `/editdancers` in-game mover to slide dancers onto the poles; placements **save to SQL**
+- Active dancers also save to SQL so they come back after a restart
+- Stripper / low-clothing peds (vanilla strippers, beach, topless, plus a few freemode bikini outfits)
 - Mixed pole routines (spin / climb / floorwork) plus extra in-place dances; occupied poles auto-cycle so they are not clones
 - Throw cash at a dancer (preset or custom) with raining-cash effects
 - Tips go to the club **Renewed Banking** job account (`vanillaunicorn`)
-- Dirty → clean wash: club keeps **17.5%**, guest receives **82.5%** clean cash
-- Self-service wash desk **or** staff counting a nearby guest’s dirty money
+- Dirty → clean wash at the desk **or by 3rd-eyeing a dancer**: club keeps **17.5%**, guest receives **82.5%** clean cash
 - ox_lib menus, ox_target / qb-target, QBCore / Qbox / ESX, ox_inventory or qb-inventory
 
 ## Requirements
 
 - [ox_lib](https://github.com/overextended/ox_lib)
+- [oxmysql](https://github.com/overextended/oxmysql)
 - [Renewed-Banking](https://github.com/Renewed-Scripts/Renewed-Banking)
 - ox_target **or** qb-target (optional — E-key fallback is included)
 - qb-core, qbx_core, or es_extended
@@ -28,6 +29,7 @@ FiveM club resource for **Vanilla Unicorn** that lets on-duty `vanillaunicorn` s
 
 ```cfg
 ensure ox_lib
+ensure oxmysql
 ensure ox_target
 ensure Renewed-Banking
 ensure djfivem_dancers
@@ -51,7 +53,7 @@ vanillaunicorn = {
 
 `bankAuth = true` is what Renewed Banking uses so bosses can see the club account. The job name (`vanillaunicorn`) **must** match `Config.Clubs.vanillaunicorn.account`.
 
-4. Open `config.lua` if you need to slide a dancer onto the pole (`Config.PoleAlign` or a per-pole `offset`) or move the wash desk.
+4. Tables are created automatically. You can also import `sql/djfivem_dancers.sql` by hand.
 
 ## Dirty money
 
@@ -70,11 +72,13 @@ Clean cash is added as ox_inventory `money` when ox_inventory is running, otherw
 **Staff (`vanillaunicorn` job, on duty)**  
 Target any pole or the wash desk → **Stage Board** (or `/dancermenu`). Tick which poles to fill or clear, or open a pole to pick the dancer and routine.
 
+`/editdancers` (or Stage Board → Edit Pole Placements): WASD to slide, arrows for height, Q/E to turn, Enter to save. That position is stored in SQL.
+
 **Guests**  
-Target the dancer or pole → Throw Money. Cash comes from pocket money and is deposited to the club account.
+Target the dancer or pole → Throw Money. Target the dancer → **Wash Dirty Money**.
 
 **Wash**  
-Use the office desk to wash your own dirty money, or staff can use **Count Their Dirty Money** on a nearby guest. The guest confirms. Example: `$10,000` dirty → **$1,750** to the Unicorn account, **$8,250** clean cash back.
+Use the office desk, or 3rd-eye a dancer on stage. Staff can also **Count Their Dirty Money** on a nearby guest. Example: `$10,000` dirty → **$1,750** to the Unicorn account, **$8,250** clean cash back.
 
 Fee percent is `Config.Wash.feePercent` (default `17.5`).
 
@@ -98,7 +102,8 @@ bahama = {
 ## Commands
 
 - `/dancermenu` — on-duty `vanillaunicorn` staff, opens the ox_lib stage board
-- `/cleardancers` — admin / console, clears every staged dancer
+- `/editdancers` — move a dancer on a pole; saved to SQL
+- `/cleardancers` — admin / console, clears every staged dancer (SQL too)
 
 ## Notes
 

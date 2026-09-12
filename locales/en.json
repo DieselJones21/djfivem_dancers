@@ -62,5 +62,14 @@
     "declined": "They declined.",
     "min_grade": "Your job grade cannot do that.",
     "max_wash": "That is over the wash limit.",
-    "min_wash": "That is below the minimum wash."
+    "min_wash": "That is below the minimum wash.",
+    "edit_placement": "Move This Pole",
+    "edit_placement_desc": "Nudge the dancer until she sits on the pole, then save",
+    "edit_placements": "Edit Pole Placements",
+    "edit_placements_desc": "In-game mover for each pole. Saves to the database",
+    "editor_help": "[W/A/S/D] Move  [Arrows] Height  [Q/E] Turn  [Shift] Slow  [Alt] Fast  [R] Reset  [Enter] Save  [Backspace] Cancel",
+    "editor_saved": "Placement saved.",
+    "editor_cancelled": "Placement not saved.",
+    "editor_busy": "Already editing a pole.",
+    "editor_too_far_pole": "That is too far from the pole."
 }
